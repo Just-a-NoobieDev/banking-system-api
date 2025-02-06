@@ -1,0 +1,973 @@
+basePath: /api
+definitions:
+  models.AccountBalance:
+    properties:
+      balance:
+        type: number
+      currency:
+        type: string
+      id:
+        type: integer
+    type: object
+  models.AccountMinimal:
+    properties:
+      balance:
+        type: number
+      currency:
+        type: string
+      id:
+        type: integer
+    type: object
+  models.CreateAccountRequest:
+    properties:
+      account_description:
+        type: string
+      account_name:
+        type: string
+      currency:
+        $ref: '#/definitions/models.Currency'
+    type: object
+  models.CreateTransactionRequest:
+    properties:
+      account_id:
+        type: integer
+      amount:
+        type: number
+    type: object
+  models.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+    type: object
+  models.Currency:
+    enum:
+    - USD
+    - EUR
+    - GBP
+    type: string
+    x-enum-varnames:
+    - USD
+    - EUR
+    - GBP
+  models.GenerateSOACustomRequest:
+    properties:
+      account_id:
+        type: integer
+      currency:
+        default: USD
+        type: string
+      end_date:
+        type: string
+      item_count:
+        default: 100
+        type: integer
+      start_date:
+        type: string
+    type: object
+  models.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      status_code:
+        type: integer
+      success:
+        type: boolean
+    type: object
+  models.SOA:
+    properties:
+      account_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      pdf_url:
+        type: string
+      statement_date:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.TransactionStatus:
+    enum:
+    - pending
+    - completed
+    - failed
+    type: string
+    x-enum-varnames:
+    - Pending
+    - Completed
+    - Failed
+  models.TransactionType:
+    enum:
+    - DEPOSIT
+    - WITHDRAWAL
+    type: string
+    x-enum-varnames:
+    - Deposit
+    - Withdrawal
+  models.UpdateUserPasswordRequest:
+    properties:
+      new_password:
+        type: string
+      old_password:
+        type: string
+    type: object
+  models.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+    type: object
+  models.User:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/models.AccountMinimal'
+        type: array
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      password:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.ViewBalanceResponse:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/models.AccountBalance'
+        type: array
+      balances_by_currency:
+        additionalProperties:
+          type: number
+        type: object
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a Banking System API.
+  title: Banking System API
+  version: "1.0"
+paths:
+  /account/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new account for a user with specified currency
+      parameters:
+      - description: Create account request
+        in: body
+        name: createAccountRequest
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAccountRequest'
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Account created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: integer
+                  type: object
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new account
+      tags:
+      - account
+  /account/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Permanently delete an account and all associated data
+      parameters:
+      - description: Account ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account deleted successfully
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Account not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete an account
+      tags:
+      - account
+  /account/get:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific account
+      parameters:
+      - description: Account ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account details retrieved successfully
+          schema:
+            $ref: '#/definitions/models.Response'
+        "403":
+          description: Unauthorized access to account
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Account not found
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get an account by ID
+      tags:
+      - account
+  /account/get-accounts:
+    get:
+      consumes:
+      - application/json
+      description: Get all accounts for a user with filtering, sorting, and pagination
+      parameters:
+      - description: Minimum balance filter
+        in: query
+        name: minBalance
+        type: number
+      - description: Maximum balance filter
+        in: query
+        name: maxBalance
+        type: number
+      - description: Currency filter (USD, EUR, GBP)
+        in: query
+        name: currency
+        type: string
+      - description: Date from filter (RFC3339)
+        in: query
+        name: dateFrom
+        type: string
+      - description: Date to filter (RFC3339)
+        in: query
+        name: dateTo
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      - description: Sort field (balance, currency, created_at)
+        in: query
+        name: sortField
+        type: string
+      - description: Sort direction (ASC, DESC)
+        in: query
+        name: sortDirection
+        type: string
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get all accounts for a user
+      tags:
+      - account
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login a user with email and password
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Login a user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email and password
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Register a new user
+      tags:
+      - auth
+  /soa/download:
+    get:
+      consumes:
+      - application/json
+      description: Download a statement of account by ID
+      parameters:
+      - description: SOA ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: SOA downloaded successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Download Statement of Account
+      tags:
+      - soa
+  /soa/generate:
+    post:
+      consumes:
+      - application/json
+      description: Get a statement of account for a user with custom filters such
+        as start date, end date, transaction type and item count.
+      parameters:
+      - description: Generate SOA Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.GenerateSOACustomRequest'
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SOA'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Statement of Account
+      tags:
+      - soa
+  /soa/generated:
+    get:
+      consumes:
+      - application/json
+      description: Get all statements of account generated by the user
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get All Generated SOAs
+      tags:
+      - soa
+  /transaction:
+    get:
+      consumes:
+      - application/json
+      description: Get all transactions with optional filtering, sorting, and pagination
+      parameters:
+      - in: query
+        name: account_id
+        type: integer
+      - in: query
+        name: date_from
+        type: string
+      - in: query
+        name: date_to
+        type: string
+      - in: query
+        name: max_amount
+        type: number
+      - in: query
+        name: min_amount
+        type: number
+      - enum:
+        - pending
+        - completed
+        - failed
+        in: query
+        name: status
+        type: string
+        x-enum-varnames:
+        - Pending
+        - Completed
+        - Failed
+      - enum:
+        - DEPOSIT
+        - WITHDRAWAL
+        in: query
+        name: type
+        type: string
+        x-enum-varnames:
+        - Deposit
+        - Withdrawal
+      - description: '"ASC" or "DESC"'
+        in: query
+        name: direction
+        type: string
+      - in: query
+        name: field
+        type: string
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: page_size
+        type: integer
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get all transactions of authenticated user
+      tags:
+      - transactions
+  /transaction/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Make a deposit transaction
+      parameters:
+      - description: Deposit details
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTransactionRequest'
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Deposit money into an account
+      tags:
+      - transactions
+  /transaction/get:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific transaction
+      parameters:
+      - description: Transaction ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get a specific transaction of authenticated user
+      tags:
+      - transactions
+  /transaction/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Make a withdrawal transaction
+      parameters:
+      - description: Withdrawal details
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTransactionRequest'
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Withdraw money from an account
+      tags:
+      - transactions
+  /user/me:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific user
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User details retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user details
+      tags:
+      - user
+  /user/update-password:
+    put:
+      consumes:
+      - application/json
+      description: Update the password for a specific user
+      parameters:
+      - description: Password update details
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUserPasswordRequest'
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user password
+      tags:
+      - user
+  /user/update-profile:
+    put:
+      consumes:
+      - application/json
+      description: Update details of a specific user
+      parameters:
+      - description: User details to update
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUserRequest'
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user information
+      tags:
+      - user
+  /user/view-balance:
+    get:
+      consumes:
+      - application/json
+      description: Get the current balance for a specific user
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Balance retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ViewBalanceResponse'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: View user balance
+      tags:
+      - user
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

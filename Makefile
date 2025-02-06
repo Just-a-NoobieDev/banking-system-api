@@ -5,8 +5,6 @@ all: build test
 
 build:
 	@echo "Building..."
-	
-	
 	@go build -o main cmd/api/main.go
 
 # Run the application
@@ -61,4 +59,34 @@ watch:
             fi; \
         fi
 
-.PHONY: all build run test clean watch docker-run docker-down itest
+# Migration Commands
+migrate-up:
+	@echo "Running migrations..."
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found"; \
+		exit 1; \
+	fi
+	@source .env && migrate -path internal/database/migrations -database "postgresql://$${USERNAME}:$${PASSWORD}@$${DB_HOST}:$${DB_PORT}/$${DATABASE}?sslmode=disable" up
+
+migrate-down:
+	@echo "Rolling back migrations..."
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found"; \
+		exit 1; \
+	fi
+	@source .env && migrate -path internal/database/migrations -database "postgresql://$${USERNAME}:$${PASSWORD}@$${DB_HOST}:$${DB_PORT}/$${DATABASE}?sslmode=disable" down
+
+migrate-create:
+	@if [ -z "$(name)" ]; then \
+		read -p "Enter migration name: " migration_name; \
+		if [ -z "$$migration_name" ]; then \
+			echo "Migration name cannot be empty"; \
+			exit 1; \
+		fi; \
+		migrate create -ext sql -dir internal/database/migrations -seq $$migration_name; \
+	else \
+		migrate create -ext sql -dir internal/database/migrations -seq $(name); \
+	fi
+	@echo "Migration files created successfully!"
+
+.PHONY: all build run test clean watch docker-run docker-down itest migrate-up migrate-down migrate-create

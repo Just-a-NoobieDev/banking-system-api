@@ -1,6 +1,7 @@
 package database
 
 import (
+	"banking-system/internal/database/models"
 	"context"
 	"database/sql"
 	"fmt"
@@ -9,19 +10,27 @@ import (
 	"strconv"
 	"time"
 
+	"banking-system/internal/pdf"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
 )
 
 // Service represents a service that interacts with a database.
 type Service interface {
-	// Health returns a map of health status information.
-	// The keys and values in the map are service-specific.
 	Health() map[string]string
-
-	// Close terminates the database connection.
-	// It returns an error if the connection cannot be closed.
 	Close() error
+	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
+	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	ExecTx(ctx context.Context, fn func(*sql.Tx) error, opts *sql.TxOptions) error
+	ExecTxReadOnly(ctx context.Context, fn func(*sql.Tx) error) error
+	GeneratePDF(transactions []models.Transaction, totalAmount float64, userID int, userFullName string) (string, error)
 }
 
 type service struct {
@@ -29,12 +38,12 @@ type service struct {
 }
 
 var (
-	database   = os.Getenv("BLUEPRINT_DB_DATABASE")
-	password   = os.Getenv("BLUEPRINT_DB_PASSWORD")
-	username   = os.Getenv("BLUEPRINT_DB_USERNAME")
-	port       = os.Getenv("BLUEPRINT_DB_PORT")
-	host       = os.Getenv("BLUEPRINT_DB_HOST")
-	schema     = os.Getenv("BLUEPRINT_DB_SCHEMA")
+	database   = os.Getenv("DATABASE")
+	password   = os.Getenv("PASSWORD")
+	username   = os.Getenv("USERNAME")
+	port       = os.Getenv("DB_PORT")
+	host       = os.Getenv("DB_HOST")
+	schema     = os.Getenv("SCHEMA")
 	dbInstance *service
 )
 
@@ -54,8 +63,6 @@ func New() Service {
 	return dbInstance
 }
 
-// Health checks the health of the database connection by pinging the database.
-// It returns a map with keys indicating various health statistics.
 func (s *service) Health() map[string]string {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -105,11 +112,88 @@ func (s *service) Health() map[string]string {
 	return stats
 }
 
-// Close closes the database connection.
-// It logs a message indicating the disconnection from the specific database.
-// If the connection is successfully closed, it returns nil.
-// If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
 	log.Printf("Disconnected from database: %s", database)
 	return s.db.Close()
 }
+
+func (s *service) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return s.db.QueryRowContext(ctx, query, args...)
+}
+
+func (s *service) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
+}
+
+func (s *service) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return s.db.ExecContext(ctx, query, args...)
+}
+
+func (s *service) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	return s.db.BeginTx(ctx, opts)
+}
+
+func (s *service) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
+	return s.db.PrepareContext(ctx, query)
+}
+
+func (s *service) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return s.db.ExecContext(ctx, query, args...)
+}
+
+func (s *service) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return s.db.QueryRowContext(ctx, query, args...)
+}
+
+func (s *service) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
+}
+
+func (s *service) ExecTx(ctx context.Context, fn func(*sql.Tx) error, opts *sql.TxOptions) error {
+	tx, err := s.db.BeginTx(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			// A panic occurred, rollback and repanic
+			tx.Rollback()
+			panic(p)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		// Something went wrong, rollback
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("tx failed: %v, unable to rollback: %v", err, rbErr)
+		}
+		return err
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (s *service) ExecTxReadOnly(ctx context.Context, fn func(*sql.Tx) error) error {
+	opts := &sql.TxOptions{
+		ReadOnly: true,
+	}
+	return s.ExecTx(ctx, fn, opts)
+}
+
+func (s *service) GeneratePDF(transactions []models.Transaction, totalAmount float64, userID int, userFullName string) (string, error) {
+	generator := pdf.NewStatementGenerator(pdf.StatementConfig{
+		OutputDir:    "statements",
+		BankName:    "Bank of Go",
+		BankAddress: "123 Main St, Anytown, USA",
+		BankContact: "123-456-7890",
+	})
+	return generator.GenerateStatement(transactions, totalAmount, userID, userFullName)
+}
+
+
