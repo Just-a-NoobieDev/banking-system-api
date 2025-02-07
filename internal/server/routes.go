@@ -41,7 +41,7 @@ func (w *wrappedResponseWriter) Write(data []byte) (int, error) {
 // @version         1.0
 // @description     This is a Banking System API.
 
-// @host      192.168.100.4:8085
+// @host       https://banking.carldev.site
 // @BasePath  /api
 
 // @securityDefinitions.apikey ApiKeyAuth
@@ -306,7 +306,7 @@ func (s *Server) HelloWorldHandler(w http.ResponseWriter, r *http.Request) {
 		GrafanaURL    string
 	}{
 		ReadmeContent: template.HTML(html),
-		GrafanaURL:    fmt.Sprintf("http://%s:3456", os.Getenv("CONTAINER_IP")),
+		GrafanaURL:    os.Getenv("GRAFANA_URL"),
 	}
 
 	// Parse and execute template

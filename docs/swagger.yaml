@@ -170,7 +170,7 @@ definitions:
           type: number
         type: object
     type: object
-host: 192.168.100.4:8085
+host: https://banking.carldev.site
 info:
   contact: {}
   description: This is a Banking System API.
