@@ -1,7 +1,6 @@
 # Project banking-system
 
-A modern banking system application that handles basic banking operations. 
-
+A modern banking system application that handles basic banking operations.
 
 ## Getting Started
 
@@ -35,28 +34,77 @@ cp .env.example .env
 
 The project includes several make commands to help you with development:
 
-| Command            | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `make all`         | Run build with tests                           |
-| `make build`       | Build the application                          |
-| `make run`         | Run the application                            |
-| `make docker-run`  | Create and start the database container        |
-| `make docker-down` | Shutdown the database container                |
-| `make itest`       | Run integration tests                          |
-| `make watch`       | Live reload the application during development |
-| `make test`        | Run the test suite                             |
-| `make clean`       | Clean up binary from the last build            |
+| Command               | Description                                    |
+| --------------------- | ---------------------------------------------- |
+| `make all`            | Run build with tests                           |
+| `make build`          | Build the application                          |
+| `make run`            | Run the application                            |
+| `make docker-run`     | Create and start the database container        |
+| `make docker-down`    | Shutdown the database container                |
+| `make itest`          | Run integration tests                          |
+| `make watch`          | Live reload the application during development |
+| `make test`           | Run the test suite                             |
+| `make clean`          | Clean up binary from the last build            |
+| `make migrate-create` | Create a new database migration file           |
+| `make migrate-up`     | Run all pending database migrations            |
+| `make migrate-down`   | Rollback the last database migration           |
 
 ## Project Structure
 
 ```
 banking-system/
 ├── cmd/                    # Application entry points
-├── internal/               # Private application and library code
-├── pkg/                    # Public library code
-├── api/                    # API documentation and specifications
-├── scripts/               # Scripts for development and deployment
-└── test/                  # Additional test files
+│   └── api/               # API server
+│       └── main.go        # Main application entry point
+├── docs/                  # Documentation files
+│   ├── docs.go           # Generated API documentation
+│   ├── swagger.json      # Swagger API specification in JSON
+│   └── swagger.yaml      # Swagger API specification in YAML
+├── internal/             # Private application and library code
+│   ├── database/         # Database management
+│   │   ├── migrations/   # Database migration files
+│   │   ├── models/       # Data models
+│   │   │   ├── account.go
+│   │   │   ├── soa.go
+│   │   │   ├── transaction.go
+│   │   │   ├── types.go
+│   │   │   └── user.go
+│   │   ├── repositories/ # Data access layer
+│   │   │   ├── account.go
+│   │   │   ├── soa.go
+│   │   │   ├── transaction.go
+│   │   │   └── user.go
+│   │   └── database.go
+│   ├── pdf/             # PDF generation
+│   │   └── statement.go
+│   ├── server/          # HTTP server implementation
+│   │   ├── account.go
+│   │   ├── auth.go
+│   │   ├── routes.go
+│   │   ├── routes_test.go
+│   │   ├── server.go
+│   │   ├── soa.go
+│   │   ├── transactions.go
+│   │   └── user.go
+│   └── utils/           # Internal utilities
+│       └── http.go
+├── statements/          # Generated statement PDFs
+├── tmp/                # Temporary files
+├── utils/              # Global utilities
+│   ├── http.go
+│   └── jwt.go
+├── .air.toml           # Air live reload configuration
+├── .dockerignore       # Docker ignore file
+├── .env                # Environment variables
+├── .env.example        # Example environment file
+├── .gitignore         # Git ignore file
+├── docker-compose.yml  # Docker compose configuration
+├── Dockerfile         # Docker build file
+├── go.mod             # Go module file
+├── go.sum             # Go module checksum
+├── main               # Binary executable
+├── Makefile          # Build automation
+└── README.md         # Project documentation
 ```
 
 ## API Documentation

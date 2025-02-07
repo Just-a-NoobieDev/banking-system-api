@@ -23,19 +23,20 @@ type Server struct {
 	soaService *SOAService
 }
 
-
-
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
-
 	db := database.New()
+
+	// Start metrics collection for DB
+	db.StartMetricsCollection()
+
 	authService := NewAuthService(db)
 	accountService := NewAccountService(db)
 	transactionService := NewTransactionService(db)
 	userService := NewUserService(db)
 	soaService := NewSOAService(db)
 
-	NewServer := &Server{
+	server := &Server{
 		port: port,
 		db: db,
 		authService: authService,
@@ -46,13 +47,19 @@ func NewServer() *http.Server {
 	}
 
 	// Declare Server config
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
-		Handler:      NewServer.RegisterRoutes(),
+	httpServer := &http.Server{
+		Addr:         fmt.Sprintf(":%d", server.port),
+		Handler:      server.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	return server
+	go server.db.StartMetricsCollection()
+
+	return httpServer
 }
+
+
+
+

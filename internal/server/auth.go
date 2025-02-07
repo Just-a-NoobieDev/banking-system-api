@@ -7,6 +7,9 @@ import (
 	"banking-system/utils"
 	"encoding/json"
 	"net/http"
+	"time"
+
+	"banking-system/internal/lib"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -50,6 +53,14 @@ func (s *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// After successful registration, update active users count
+	userCount, err := userRepository.GetUserCount()
+	if err != nil {
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to get user count", err)
+		return
+	}
+	lib.UpdateActiveUsers(userCount)
+
 	utils.WriteJSONResponse(w, http.StatusCreated, "User created successfully", map[string]interface{}{
 		"access_token": token,
 	})
@@ -68,6 +79,7 @@ func (s *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 // @Router /auth/login [post]
 // @Tags auth
 func (s *AuthService) Login(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var loginRequest models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
 		utils.WriteJSONError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -77,6 +89,7 @@ func (s *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	userRepository := repositories.NewUserRepository(s.db)
 	user, err := userRepository.GetUserByEmail(loginRequest.Email)
 	if err != nil {
+		lib.RecordLoginAttempt(false)
 		response := models.Response{
 			StatusCode: http.StatusUnauthorized,
 			Success:    false,
@@ -89,10 +102,11 @@ func (s *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(response)
-		
 		return
 	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
+		lib.RecordLoginAttempt(false)
 		response := models.Response{
 			StatusCode: http.StatusUnauthorized,
 			Success:    false,
@@ -107,6 +121,7 @@ func (s *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 		return
 	}
+	lib.RecordLoginAttempt(true)
 
 	token, err := utils.GenerateToken(user.ID)
 	if err != nil {
@@ -114,7 +129,34 @@ func (s *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Increment active users on successful login
+	lib.IncrementActiveUsers()
+	
+	// Record API latency
+	duration := time.Since(start).Seconds()
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
+
 	utils.WriteJSONResponse(w, http.StatusOK, "User logged in successfully", map[string]interface{}{
 		"access_token": token,
 	})
+}
+
+// @Router /auth/logout [post]
+// @Tags auth
+// @Summary Logout a user
+// @Description Logout a user
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.Response
+// @Failure 500 {object} models.Response
+func (s *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	// Decrement active users on logout
+	lib.DecrementActiveUsers()
+	
+	// Record API latency
+	duration := time.Since(start).Seconds()
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
+
+	utils.WriteJSONResponse(w, http.StatusOK, "User logged out successfully", nil)
 }

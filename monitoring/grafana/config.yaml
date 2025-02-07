@@ -1,0 +1,38 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+dashboards:
+  - name: "Banking System Metrics"
+    folder: "Banking"
+    editable: true
+    uid: banking-metrics
+    path: /etc/grafana/dashboards/banking-dashboard.json
+
+  - name: "Infrastructure Metrics"
+    folder: "Banking"
+    editable: true
+    uid: banking-infra
+    path: /etc/grafana/dashboards/infrastructure-dashboard.json
+
+security:
+  adminUser: admin
+  adminPassword: ${GRAFANA_ADMIN_PASSWORD}
+
+server:
+  http_port: 3000
+
+dashboardProviders:
+  - name: "default"
+    orgId: 1
+    folder: "Banking"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

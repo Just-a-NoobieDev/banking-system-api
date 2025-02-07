@@ -2,6 +2,7 @@ package server
 
 import (
 	"banking-system/internal/database/models"
+	"banking-system/internal/lib"
 	"banking-system/utils"
 	"context"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 
 	_ "banking-system/docs"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -46,6 +48,8 @@ func (w *wrappedResponseWriter) Write(data []byte) (int, error) {
 func (s *Server) RegisterRoutes() http.Handler {
 	mux := http.NewServeMux()
 
+	mux.Handle("/metrics", promhttp.Handler())
+
 	// Register routes
 	mux.Handle("/docs/", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:8080/docs/doc.json"),
@@ -57,6 +61,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// Auth Routes
 	mux.Handle("/api/auth/register", s.MethodGuard(http.HandlerFunc(s.authService.Register), http.MethodPost))
 	mux.Handle("/api/auth/login", s.MethodGuard(http.HandlerFunc(s.authService.Login), http.MethodPost))
+	mux.Handle("/api/auth/logout", s.MethodGuard(http.HandlerFunc(s.authService.Logout), http.MethodPost))
 
 	// Account Routes all routes are protected
 	mux.Handle("/api/account/create", s.MethodGuard(s.AuthGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -194,8 +199,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// Move the root route to the end
 	mux.Handle("/", s.MethodGuard(http.HandlerFunc(s.HelloWorldHandler), http.MethodGet))
 
-	// Wrap the mux with CORS middleware
-	return s.LoggerMiddleware(s.corsMiddleware(mux))
+	// Add all middleware in the correct order
+	handler := s.corsMiddleware(mux)
+	handler = s.PrometheusMiddleware(handler)
+	handler = s.LoggerMiddleware(handler)
+
+	return handler
 }
 
 func (s *Server) corsMiddleware(next http.Handler) http.Handler {
@@ -321,6 +330,25 @@ func (s *Server) MethodGuard(next http.Handler, allowedMethods ...string) http.H
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode(response)
+	})
+}
+
+func (s *Server) PrometheusMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		
+		// Create a wrapped response writer to capture the status code
+		wrapped := &wrappedResponseWriter{
+			ResponseWriter: w,
+			statusCode:    http.StatusOK,
+		}
+		
+		// Call the next handler
+		next.ServeHTTP(wrapped, r)
+		
+		// Record request metrics
+		duration := time.Since(start).Seconds()
+		lib.RecordRequest(r.URL.Path, r.Method, wrapped.statusCode, duration)
 	})
 }
 

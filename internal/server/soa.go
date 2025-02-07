@@ -4,6 +4,7 @@ import (
 	"banking-system/internal/database"
 	"banking-system/internal/database/models"
 	"banking-system/internal/database/repositories"
+	"banking-system/internal/lib"
 	"banking-system/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -36,6 +37,10 @@ func NewSOAService(db database.Service) *SOAService {
 // @Security ApiKeyAuth
 // @param Authorization header string true "Authorization" default(Bearer <Add access token here>)
 func (s *SOAService) GetSOA(w http.ResponseWriter, r *http.Request, userID int) {
+	start := time.Now()
+	// Record transaction when generating SOA
+	lib.RecordTransaction("SOA_GENERATION", 0)
+
 	var request models.GenerateSOACustomRequestUnformatted
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		utils.WriteJSONError(w, http.StatusBadRequest, "Invalid request body: dates should be in RFC3339 format (e.g., '2006-01-02T15:04:05Z')", err)
@@ -82,7 +87,8 @@ func (s *SOAService) GetSOA(w http.ResponseWriter, r *http.Request, userID int) 
 	soaRepository := repositories.NewSOARepository(s.db)
 	soa, err := soaRepository.GetSOA(userID, finalRequest)
 	if err != nil {
-		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to get SOA", err)
+		lib.RecordSOAGeneration(false, time.Since(start).Seconds())
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to generate SOA", err)
 		return
 	}
 
@@ -92,6 +98,10 @@ func (s *SOAService) GetSOA(w http.ResponseWriter, r *http.Request, userID int) 
 		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to save PDF", err)
 		return
 	}
+
+	duration := time.Since(start).Seconds()
+	lib.RecordSOAGeneration(true, duration)
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
 
 	utils.WriteJSONResponse(w, http.StatusOK, "SOA retrieved successfully", soa)
 }

@@ -18,6 +18,7 @@ type UserRepository interface {
 	UpdateUserPassword(user models.UpdateUserPasswordRequest, id int) (models.User, error)
 	GetUser(id int) (models.User, error)
 	ViewBalance(id int) (models.ViewBalanceResponse, error)
+	GetUserCount() (int, error)
 }
 
 type userRepository struct {
@@ -378,4 +379,13 @@ func (r *userRepository) ViewBalance(id int) (models.ViewBalanceResponse, error)
 	userBalance.BalancesByCurrency = balancesByCurrency
 
 	return userBalance, nil
+}
+
+func (r *userRepository) GetUserCount() (int, error) {
+	var count int
+	err := r.db.QueryRow(context.Background(), "SELECT COUNT(*) FROM users").Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

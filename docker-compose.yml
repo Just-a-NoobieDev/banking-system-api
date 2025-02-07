@@ -22,6 +22,7 @@ services:
         condition: service_healthy
     networks:
       - banking-system
+      - monitoring
   psql_bp:
     image: postgres:latest
     restart: unless-stopped
@@ -41,8 +42,37 @@ services:
       start_period: 15s
     networks:
       - banking-system
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - banking-system
+      - monitoring
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana/config.yaml:/etc/grafana/grafana.ini
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
 
 volumes:
   psql_volume_bp:
 networks:
   banking-system:
+  monitoring:
+    driver: bridge

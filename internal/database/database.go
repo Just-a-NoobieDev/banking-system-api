@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"banking-system/internal/lib"
 	"banking-system/internal/pdf"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -31,6 +32,7 @@ type Service interface {
 	ExecTx(ctx context.Context, fn func(*sql.Tx) error, opts *sql.TxOptions) error
 	ExecTxReadOnly(ctx context.Context, fn func(*sql.Tx) error) error
 	GeneratePDF(transactions []models.Transaction, totalAmount float64, userID int, userFullName string) (string, error)
+	StartMetricsCollection()
 }
 
 type service struct {
@@ -60,6 +62,9 @@ func New() Service {
 	dbInstance = &service{
 		db: db,
 	}
+
+	dbInstance.StartMetricsCollection()
+
 	return dbInstance
 }
 
@@ -195,5 +200,26 @@ func (s *service) GeneratePDF(transactions []models.Transaction, totalAmount flo
 	})
 	return generator.GenerateStatement(transactions, totalAmount, userID, userFullName)
 }
+
+func (s *service) StartMetricsCollection() {
+	ticker := time.NewTicker(15 * time.Second)
+	go func() {
+		for range ticker.C {
+			stats := s.db.Stats()
+			// Record both in-use and total open connections
+			lib.UpdateDBConnections(stats.InUse)
+			
+			// You might want to add these additional DB stats
+			lib.RecordDBStats(map[string]float64{
+				"open_connections": float64(stats.OpenConnections),
+				"in_use":          float64(stats.InUse),
+				"idle":            float64(stats.Idle),
+				"wait_count":      float64(stats.WaitCount),
+			})
+		}
+	}()
+}
+
+
 
 

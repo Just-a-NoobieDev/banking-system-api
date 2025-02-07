@@ -4,6 +4,7 @@ import (
 	"banking-system/internal/database"
 	"banking-system/internal/database/models"
 	"banking-system/internal/database/repositories"
+	"banking-system/internal/lib"
 	"banking-system/internal/utils"
 	"encoding/json"
 	"net/http"
@@ -34,6 +35,7 @@ func NewAccountService(db database.Service) *AccountService {
 // @Security ApiKeyAuth
 // @param Authorization header string true "Authorization" default(Bearer <Add access token here>)
 func (s *AccountService) CreateAccount(w http.ResponseWriter, r *http.Request, userID int) {
+	start := time.Now()
 	var createAccountRequest models.CreateAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&createAccountRequest); err != nil {
 		utils.WriteJSONError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -50,6 +52,20 @@ func (s *AccountService) CreateAccount(w http.ResponseWriter, r *http.Request, u
 		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to create account", err)
 		return
 	}
+
+	account, err := accountRepository.GetAccount(accountID)
+	if err != nil {
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to get account", err)
+		return
+	}
+
+	// Record account balance after creation
+	lib.RecordAccountBalance(account.Balance, string(account.Currency))
+	lib.RecordNewAccount(string(account.Currency))
+	
+	// Record API latency
+	duration := time.Since(start).Seconds()
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
 
 	utils.WriteJSONResponse(w, http.StatusCreated, "Account created successfully", map[string]interface{}{
 		"account_id": accountID,
@@ -173,12 +189,20 @@ func (s *AccountService) GetAccounts(w http.ResponseWriter, r *http.Request, use
 // @Security ApiKeyAuth
 // @param Authorization header string true "Authorization" default(Bearer <Add access token here>)
 func (s *AccountService) GetAccount(w http.ResponseWriter, r *http.Request, accountID int, userID int) {
+	start := time.Now()
 	accountRepository := repositories.NewAccountRepository(s.db)
 	account, err := accountRepository.GetAccount(accountID)
 	if err != nil {
 		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to get account", err)
 		return
 	}
+
+	// Record account balance on retrieval
+	lib.RecordAccountBalance(account.Balance, string(account.Currency))
+	
+	// Record API latency
+	duration := time.Since(start).Seconds()
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
 
 	utils.WriteJSONResponse(w, http.StatusOK, "Account fetched successfully", account)
 }

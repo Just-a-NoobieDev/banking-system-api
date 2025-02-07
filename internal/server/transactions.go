@@ -9,6 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"banking-system/internal/lib"
 )
 
 type TransactionService struct {
@@ -32,6 +35,7 @@ func NewTransactionService(db database.Service) *TransactionService {
 // @Security ApiKeyAuth
 // @param Authorization header string true "Authorization" default(Bearer <Add access token here>)
 func (s *TransactionService) Deposit(w http.ResponseWriter, r *http.Request, userID int) {
+	start := time.Now()
 	ctx := r.Context()
 	
 	var depositRequest models.CreateTransactionRequest
@@ -59,6 +63,23 @@ func (s *TransactionService) Deposit(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
+	// Record transaction metrics
+	lib.RecordTransaction("deposit", depositRequest.Amount)
+	
+	// Update account balance metrics
+	accountRepository := repositories.NewAccountRepository(s.db)
+	account, err := accountRepository.GetAccount(depositRequest.AccountID)
+	if err != nil {
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to update account balance", err)
+		return
+	}
+	
+	lib.RecordAccountBalance(account.Balance, string(account.Currency))
+
+	// Record API latency
+	duration := time.Since(start).Seconds()
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
+
 	utils.WriteJSONResponse(w, http.StatusCreated, "Deposit successful", map[string]interface{}{
 		"transaction_id": transaction["transaction_id"],
 		"reference_id": transaction["reference_id"],
@@ -78,6 +99,7 @@ func (s *TransactionService) Deposit(w http.ResponseWriter, r *http.Request, use
 // @Security ApiKeyAuth
 // @param Authorization header string true "Authorization" default(Bearer <Add access token here>)
 func (s *TransactionService) Withdraw(w http.ResponseWriter, r *http.Request, userID int) {
+	start := time.Now()
 	ctx := r.Context()
 	
 	var withdrawRequest models.CreateTransactionRequest
@@ -104,6 +126,22 @@ func (s *TransactionService) Withdraw(w http.ResponseWriter, r *http.Request, us
 		utils.WriteJSONError(w, http.StatusInternalServerError, "Withdrawal failed", err)
 		return
 	}
+
+	// Record transaction metrics
+	lib.RecordTransaction("withdraw", withdrawRequest.Amount)
+	
+	// Update account balance metrics
+	accountRepository := repositories.NewAccountRepository(s.db)
+	account, err := accountRepository.GetAccount(withdrawRequest.AccountID)
+	if err != nil {
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Failed to update account balance", err)
+		return
+	}
+	lib.RecordAccountBalance(account.Balance, string(account.Currency))
+
+	// Record API latency
+	duration := time.Since(start).Seconds()
+	lib.RecordRequest(r.URL.Path, r.Method, http.StatusOK, duration)
 
 	utils.WriteJSONResponse(w, http.StatusCreated, "Withdrawal successful", map[string]interface{}{
 		"transaction_id": transaction["transaction_id"],
