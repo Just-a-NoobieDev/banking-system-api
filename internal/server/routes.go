@@ -41,7 +41,7 @@ func (w *wrappedResponseWriter) Write(data []byte) (int, error) {
 // @version         1.0
 // @description     This is a Banking System API.
 
-// @host      localhost:8084
+// @host      localhost:808
 // @BasePath  /api
 
 // @securityDefinitions.apikey ApiKeyAuth
@@ -57,7 +57,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Register routes
 	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL(fmt.Sprintf("%s/docs/doc.json", os.Getenv("CONTAINER_IP"))),
+		httpSwagger.URL(fmt.Sprintf("http://%s:8085/docs/doc.json", os.Getenv("CONTAINER_IP"))),
 		httpSwagger.DocExpansion("none"),
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DomID("swagger-ui"),
@@ -306,7 +306,7 @@ func (s *Server) HelloWorldHandler(w http.ResponseWriter, r *http.Request) {
 		GrafanaURL    string
 	}{
 		ReadmeContent: template.HTML(html),
-		GrafanaURL:    fmt.Sprintf("http://%s:3000", os.Getenv("CONTAINER_IP")),
+		GrafanaURL:    fmt.Sprintf("http://%s:3456", os.Getenv("CONTAINER_IP")),
 	}
 
 	// Parse and execute template
