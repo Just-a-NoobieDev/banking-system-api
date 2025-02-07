@@ -41,7 +41,7 @@ func (w *wrappedResponseWriter) Write(data []byte) (int, error) {
 // @version         1.0
 // @description     This is a Banking System API.
 
-// @host      localhost:8080
+// @host      localhost:8084
 // @BasePath  /api
 
 // @securityDefinitions.apikey ApiKeyAuth
@@ -57,7 +57,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Register routes
 	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL(fmt.Sprintf("http://%s:8080/docs/doc.json", os.Getenv("CONTAINER_IP"))),
+		httpSwagger.URL(fmt.Sprintf("%s/docs/doc.json", os.Getenv("CONTAINER_IP"))),
 		httpSwagger.DocExpansion("none"),
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DomID("swagger-ui"),
