@@ -6,7 +6,7 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:808",
+    "host": "localhost:8085",
     "basePath": "/api",
     "paths": {
         "/account/create": {
