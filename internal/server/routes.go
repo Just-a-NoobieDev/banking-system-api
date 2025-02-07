@@ -41,7 +41,7 @@ func (w *wrappedResponseWriter) Write(data []byte) (int, error) {
 // @version         1.0
 // @description     This is a Banking System API.
 
-// @host      localhost:808
+// @host      localhost:8085
 // @BasePath  /api
 
 // @securityDefinitions.apikey ApiKeyAuth
