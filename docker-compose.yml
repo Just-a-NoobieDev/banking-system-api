@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: prod
-    restart: unless-stopped
+    restart: always
     ports:
       - ${PORT}:${PORT}
     environment:
@@ -26,7 +26,7 @@ services:
       - monitoring
   psql_bp:
     image: postgres:latest
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: ${DATABASE}
       POSTGRES_USER: ${USERNAME}
@@ -54,12 +54,13 @@ services:
       - monitoring
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+    restart: always
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      - "3456:3456"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
@@ -70,6 +71,7 @@ services:
       - monitoring
     depends_on:
       - prometheus
+    restart: always
 
 volumes:
   psql_volume_bp:
