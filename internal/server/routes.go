@@ -6,7 +6,6 @@ import (
 	"banking-system/utils"
 	"context"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -57,7 +56,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Register routes
 	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL(fmt.Sprintf("http://%s:8085/docs/doc.json", os.Getenv("CONTAINER_IP"))),
+		httpSwagger.URL(os.Getenv("API_URL") + "/docs/doc.json"),
 		httpSwagger.DocExpansion("none"),
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DomID("swagger-ui"),
