@@ -170,7 +170,7 @@ definitions:
           type: number
         type: object
     type: object
-host: https://banking.carldev.site
+host: banking.carldev.site
 info:
   contact: {}
   description: This is a Banking System API.
