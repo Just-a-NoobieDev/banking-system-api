@@ -18,6 +18,9 @@ services:
       SCHEMA: ${SCHEMA}
       JWT_SECRET: ${JWT_SECRET}
       CONTAINER_IP: ${CONTAINER_IP}
+      GRAFANA_URL: ${GRAFANA_URL}
+      API_URL: ${API_URL}
+      PROMETHEUS_URL: ${PROMETHEUS_URL}
     depends_on:
       psql_bp:
         condition: service_healthy
