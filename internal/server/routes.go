@@ -6,14 +6,19 @@ import (
 	"banking-system/utils"
 	"context"
 	"encoding/json"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	_ "banking-system/docs"
 
+	"github.com/gomarkdown/markdown"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -52,7 +57,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Register routes
 	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8080/docs/doc.json"),
+		httpSwagger.URL(fmt.Sprintf("http://%s:8080/docs/doc.json", os.Getenv("CONTAINER_IP"))),
 		httpSwagger.DocExpansion("none"),
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DomID("swagger-ui"),
@@ -284,15 +289,39 @@ func (s *Server) LoggerMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *Server) HelloWorldHandler(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]string{"message": "Hello World"}
-	jsonResp, err := json.Marshal(resp)
+	// Read README.md content
+	readmePath := filepath.Join(".", "README.md")
+	readmeContent, err := os.ReadFile(readmePath)
 	if err != nil {
-		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		log.Printf("Error reading README.md: %v", err)
+		readmeContent = []byte("README.md not found")
+	}
+
+	// Convert markdown to HTML
+	html := markdown.ToHTML(readmeContent, nil, nil)
+	
+	// Prepare template data
+	data := struct {
+		ReadmeContent template.HTML
+		GrafanaURL    string
+	}{
+		ReadmeContent: template.HTML(html),
+		GrafanaURL:    fmt.Sprintf("http://%s:3000", os.Getenv("CONTAINER_IP")),
+	}
+
+	// Parse and execute template
+	tmpl, err := template.ParseFiles("templates/index.html")
+	if err != nil {
+		log.Printf("Error parsing template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(jsonResp); err != nil {
-		log.Printf("Failed to write response: %v", err)
+
+	w.Header().Set("Content-Type", "text/html")
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 }
 

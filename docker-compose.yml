@@ -17,6 +17,7 @@ services:
       PASSWORD: ${PASSWORD}
       SCHEMA: ${SCHEMA}
       JWT_SECRET: ${JWT_SECRET}
+      CONTAINER_IP: ${CONTAINER_IP}
     depends_on:
       psql_bp:
         condition: service_healthy

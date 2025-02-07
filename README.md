@@ -239,3 +239,10 @@ make itest
 - Swagger
 - Go Migrate
 - Go PDF
+
+## Monitoring
+
+- Grafana
+- Prometheus
+- Nginx
+- API
